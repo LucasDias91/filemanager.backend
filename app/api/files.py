@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
-from app.api.deps import get_file_service
+from app.api.deps import get_current_user, get_file_service
 from app.schemas.file import FileCreate, FileResponse
 from app.services.errors import UserNotFoundError
 from app.services.file_service import FileService
 
-router = APIRouter(prefix="/files", tags=["files"])
+router = APIRouter(prefix="/files", tags=["files"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("", response_model=FileResponse, status_code=status.HTTP_201_CREATED)

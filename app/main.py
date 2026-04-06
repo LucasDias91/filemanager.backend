@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.auth import router as auth_router
 from app.api.files import router as files_router
 from app.api.users import router as users_router
 from app.db.database import init_db
@@ -9,16 +10,16 @@ from app.services.file_service import UPLOAD_ROOT
 
 OPENAPI_TAGS = [
     {
+        "name": "auth",
+        "description": "Autenticação pública (login) para obter token JWT Bearer.",
+    },
+    {
         "name": "users",
-        "description": "Criação e listagem de utilizadores.",
+        "description": "Criação e listagem de utilizadores (requer JWT Bearer).",
     },
     {
         "name": "files",
-        "description": "Upload multipart (`user_id` + `file`) e listagem de metadados.",
-    },
-    {
-        "name": "health",
-        "description": "Estado do serviço.",
+        "description": "Upload multipart (`user_id` + `file`) e listagem de metadados (requer JWT Bearer).",
     },
 ]
 
@@ -44,10 +45,6 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-app.include_router(users_router)
-app.include_router(files_router)
-
-
-@app.get("/health", tags=["health"])
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+app.include_router(auth_router, prefix="/api")
+app.include_router(users_router, prefix="/api")
+app.include_router(files_router, prefix="/api")

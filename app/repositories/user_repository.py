@@ -17,6 +17,10 @@ class UserRepository:
     def get_by_id(self, user_id: int) -> User | None:
         return self._db.get(User, user_id)
 
+    def get_by_user_name(self, user_name: str) -> User | None:
+        stmt = select(User).where(User.user_name == user_name)
+        return self._db.scalar(stmt)
+
     def list_all(self) -> list[User]:
         stmt = select(User).order_by(User.id)
         return list(self._db.scalars(stmt).all())
