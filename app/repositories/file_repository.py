@@ -14,6 +14,10 @@ class FileRepository:
         self._db.refresh(file_row)
         return file_row
 
+    def get_by_stored_name(self, stored_name: str) -> File | None:
+        stmt = select(File).where(File.stored_name == stored_name)
+        return self._db.scalar(stmt)
+
     def list_all(self) -> list[File]:
         stmt = select(File).order_by(File.id)
         return list(self._db.scalars(stmt).all())

@@ -1,21 +1,32 @@
 from __future__ import annotations
 
+import os
+import secrets
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import quote
 
 from app.models.file import File
 from app.repositories.file_repository import FileRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.file import FileCreate
-from app.services.errors import UserNotFoundError
+from app.services.errors import (
+    InvalidFileSecretError,
+    StoredFileNotFoundError,
+    UserNotFoundError,
+)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 UPLOAD_ROOT = _PROJECT_ROOT / "uploads"
 
-RELATIVE_PATH_SEGMENT = "uploads"
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+FILES_RAW_PATH_PREFIX = "/api/files/raw"
 
-FILES_URL_PREFIX = "/files"
+
+def build_absolute_view_url(stored_name: str, secret_key: str) -> str:
+    path = f"{FILES_RAW_PATH_PREFIX}/{stored_name}"
+    return f"{PUBLIC_BASE_URL}{path}?secretKey={quote(secret_key, safe='')}"
 
 
 class FileService:
@@ -42,7 +53,32 @@ class FileService:
 
     @staticmethod
     def _build_relative_url(stored_name: str) -> str:
-        return f"{FILES_URL_PREFIX}/{stored_name}"
+        return f"{FILES_RAW_PATH_PREFIX}/{stored_name}"
+
+    @staticmethod
+    def _is_safe_stored_name(stored_name: str) -> bool:
+        if not stored_name or len(stored_name) > 255:
+            return False
+        if "/" in stored_name or "\\" in stored_name or stored_name.startswith("."):
+            return False
+        return True
+
+    def read_public_file(self, stored_name: str, secret_key: str) -> tuple[bytes, str | None]:
+        if not self._is_safe_stored_name(stored_name):
+            raise StoredFileNotFoundError()
+
+        row = self._files.get_by_stored_name(stored_name)
+        if row is None:
+            raise StoredFileNotFoundError()
+
+        if not secrets.compare_digest(row.secret_key, secret_key):
+            raise InvalidFileSecretError()
+
+        path = UPLOAD_ROOT / stored_name
+        if not path.is_file():
+            raise StoredFileNotFoundError()
+
+        return path.read_bytes(), row.content_type
 
     def create(self, data: FileCreate, file_bytes: bytes) -> File:
         if self._users.get_by_id(data.user_id) is None:
@@ -52,12 +88,11 @@ class FileService:
         secret_key = str(uuid.uuid4())
         now = datetime.now(UTC)
 
-        relative_location = f"{RELATIVE_PATH_SEGMENT}/{stored_name}"
+        relative_location = stored_name
         relative_url = self._build_relative_url(stored_name)
 
-        dest_dir = UPLOAD_ROOT / RELATIVE_PATH_SEGMENT
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        dest_path = dest_dir / stored_name
+        UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+        dest_path = UPLOAD_ROOT / stored_name
         dest_path.write_bytes(file_bytes)
 
         entity = File(
@@ -67,7 +102,7 @@ class FileService:
             content_type=data.content_type,
             relative_location=relative_location,
             relative_url=relative_url,
-            relative_path=RELATIVE_PATH_SEGMENT,
+            relative_path="",
             size=len(file_bytes),
             secret_key=secret_key,
             is_active=True,

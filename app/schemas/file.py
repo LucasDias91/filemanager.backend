@@ -10,6 +10,14 @@ class FileCreate(BaseModel):
     size: int = Field(..., ge=0)
 
 
+class FileCreatedResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, ser_json_by_alias=True)
+
+    id: int
+    url: str
+    secret_key: str = Field(serialization_alias="secretKey")
+
+
 class FileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
