@@ -7,7 +7,6 @@ class UserCreate(BaseModel):
     name: str = Field(..., max_length=255)
     user_name: str = Field(..., max_length=100)
     password: str = Field(..., max_length=10)
-    is_active: bool = True
 
 
 class UserResponse(BaseModel):

@@ -15,7 +15,7 @@ class UserService:
             name=data.name,
             user_name=data.user_name,
             password=data.password,
-            is_active=data.is_active,
+            is_active=True,
             create_at=now,
         )
         return self._users.create(entity)
