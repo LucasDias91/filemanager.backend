@@ -1,0 +1,79 @@
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+from pathlib import Path
+
+from app.models.file import File
+from app.repositories.file_repository import FileRepository
+from app.repositories.user_repository import UserRepository
+from app.schemas.file import FileCreate
+from app.services.errors import UserNotFoundError
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+UPLOAD_ROOT = _PROJECT_ROOT / "uploads"
+
+RELATIVE_PATH_SEGMENT = "uploads"
+
+FILES_URL_PREFIX = "/files"
+
+
+class FileService:
+    def __init__(
+        self,
+        file_repository: FileRepository,
+        user_repository: UserRepository,
+    ) -> None:
+        self._files = file_repository
+        self._users = user_repository
+
+    @staticmethod
+    def _safe_extension(original_name: str) -> str:
+        suffix = Path(original_name).suffix
+        if not suffix or len(suffix) > 20:
+            return ""
+        if not all(c.isalnum() or c == "." for c in suffix):
+            return ""
+        return suffix.lower()
+
+    @classmethod
+    def _make_stored_name(cls, original_name: str) -> str:
+        return f"{uuid.uuid4()}{cls._safe_extension(original_name)}"
+
+    @staticmethod
+    def _build_relative_url(stored_name: str) -> str:
+        return f"{FILES_URL_PREFIX}/{stored_name}"
+
+    def create(self, data: FileCreate, file_bytes: bytes) -> File:
+        if self._users.get_by_id(data.user_id) is None:
+            raise UserNotFoundError(data.user_id)
+
+        stored_name = self._make_stored_name(data.original_name)
+        secret_key = str(uuid.uuid4())
+        now = datetime.now(UTC)
+
+        relative_location = f"{RELATIVE_PATH_SEGMENT}/{stored_name}"
+        relative_url = self._build_relative_url(stored_name)
+
+        dest_dir = UPLOAD_ROOT / RELATIVE_PATH_SEGMENT
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = dest_dir / stored_name
+        dest_path.write_bytes(file_bytes)
+
+        entity = File(
+            user_id=data.user_id,
+            original_name=data.original_name,
+            stored_name=stored_name,
+            content_type=data.content_type,
+            relative_location=relative_location,
+            relative_url=relative_url,
+            relative_path=RELATIVE_PATH_SEGMENT,
+            size=len(file_bytes),
+            secret_key=secret_key,
+            is_active=True,
+            create_at=now,
+        )
+        return self._files.create(entity)
+
+    def list_all(self) -> list[File]:
+        return self._files.list_all()
