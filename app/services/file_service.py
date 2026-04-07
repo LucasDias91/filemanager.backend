@@ -82,3 +82,14 @@ class FileService:
 
     def list_all(self) -> list[File]:
         return self._files.list_all()
+
+    def get_file_by_secret_key(self, secret_key: str) -> tuple[str, str, str | None, bytes] | None:
+        row = self._files.get_by_secret_key(secret_key)
+        if row is None:
+            return None
+
+        path = UPLOAD_ROOT / row.stored_name
+        if not path.is_file():
+            return None
+
+        return (row.original_name, row.stored_name, row.content_type, path.read_bytes())

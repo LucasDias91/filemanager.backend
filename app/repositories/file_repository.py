@@ -18,6 +18,10 @@ class FileRepository:
         stmt = select(File).where(File.stored_name == stored_name)
         return self._db.scalar(stmt)
 
+    def get_by_secret_key(self, secret_key: str) -> File | None:
+        stmt = select(File).where(File.secret_key == secret_key)
+        return self._db.scalar(stmt)
+
     def list_all(self) -> list[File]:
         stmt = select(File).order_by(File.id)
         return list(self._db.scalars(stmt).all())

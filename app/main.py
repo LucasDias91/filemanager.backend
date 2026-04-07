@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from starlette.staticfiles import StaticFiles
 
 from app.api.auth import router as auth_router
-from app.api.files import router as files_router
+from app.api.files import public_router as files_public_router, router as files_router
 from app.api.users import router as users_router
 from app.db.database import init_db
 from app.services.file_service import UPLOAD_ROOT
@@ -53,6 +53,7 @@ app = FastAPI(
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
+app.include_router(files_public_router, prefix="/api")
 app.include_router(files_router, prefix="/api")
 
 # Same idea as app.UseStaticFiles() in ASP.NET Core: serve files from disk under a URL prefix.

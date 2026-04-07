@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from urllib.parse import quote
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import Response
 
 from app.api.deps import get_current_user, get_file_service
 from app.models.user import User
@@ -6,6 +9,7 @@ from app.schemas.file import FileCreate, FileCreatedResponse, FileResponse
 from app.services.file_service import FileService, build_absolute_storage_url
 
 router = APIRouter(prefix="/files", tags=["files"], dependencies=[Depends(get_current_user)])
+public_router = APIRouter(prefix="/files", tags=["files"])
 
 
 @router.post(
@@ -49,3 +53,19 @@ async def create_file(
 def list_files(service: FileService = Depends(get_file_service)) -> list[FileResponse]:
     rows = service.list_all()
     return [FileResponse.model_validate(r) for r in rows]
+
+
+@public_router.get("/download")
+def download_file_by_key(
+    key: str = Query(..., description="SecretKey retornada no upload."),
+    service: FileService = Depends(get_file_service),
+) -> Response:
+    file_data = service.get_file_by_secret_key(key)
+    if file_data is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    original_name, _, content_type, data = file_data
+    media_type = content_type or "application/octet-stream"
+    encoded_name = quote(original_name)
+    headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_name}"}
+    return Response(content=data, media_type=media_type, headers=headers)
