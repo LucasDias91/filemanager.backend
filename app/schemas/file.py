@@ -28,6 +28,7 @@ class FileResponse(BaseModel):
     content_type: str | None
     relative_location: str
     relative_url: str
+    url: str
     relative_path: str
     size: int
     secret_key: str

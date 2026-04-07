@@ -52,7 +52,15 @@ async def create_file(
 @router.get("", response_model=list[FileResponse])
 def list_files(service: FileService = Depends(get_file_service)) -> list[FileResponse]:
     rows = service.list_all()
-    return [FileResponse.model_validate(r) for r in rows]
+    return [
+        FileResponse.model_validate(
+            {
+                **r.__dict__,
+                "url": build_absolute_storage_url(r.stored_name),
+            }
+        )
+        for r in rows
+    ]
 
 
 @public_router.get("/download")
@@ -69,3 +77,68 @@ def download_file_by_key(
     encoded_name = quote(original_name)
     headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_name}"}
     return Response(content=data, media_type=media_type, headers=headers)
+
+
+@public_router.get("/key/{secretKey}", response_model=FileCreatedResponse, response_model_by_alias=True)
+def get_file_by_key(
+    secretKey: str,
+    service: FileService = Depends(get_file_service),
+) -> FileCreatedResponse:
+    row = service.get_metadata_by_secret_key(secretKey)
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    return FileCreatedResponse(
+        id=row.id,
+        url=build_absolute_storage_url(row.stored_name),
+        secret_key=row.secret_key,
+    )
+
+
+@public_router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+def delete_file_by_key(
+    key: str = Query(..., description="SecretKey retornada no upload."),
+    service: FileService = Depends(get_file_service),
+) -> Response:
+    deleted = service.delete_file_by_secret_key(key)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@public_router.put(
+    "/upload",
+    response_model=FileCreatedResponse,
+    response_model_by_alias=True,
+    status_code=status.HTTP_200_OK,
+)
+async def update_file_by_key(
+    key: str = Query(..., description="SecretKey retornada no upload."),
+    file: UploadFile = File(...),
+    service: FileService = Depends(get_file_service),
+) -> FileCreatedResponse:
+    raw = await file.read()
+    name = (file.filename or "unnamed").strip() or "unnamed"
+    if len(name) > 255:
+        name = name[:255]
+
+    ct = file.content_type
+    if ct is not None:
+        ct = ct.strip() or None
+    if ct is not None and len(ct) > 50:
+        ct = ct[:50]
+
+    row = service.update_file_by_secret_key(
+        key,
+        original_name=name,
+        content_type=ct,
+        file_bytes=raw,
+    )
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    return FileCreatedResponse(
+        id=row.id,
+        url=build_absolute_storage_url(row.stored_name),
+        secret_key=row.secret_key,
+    )

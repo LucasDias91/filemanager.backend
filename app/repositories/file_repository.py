@@ -22,6 +22,16 @@ class FileRepository:
         stmt = select(File).where(File.secret_key == secret_key)
         return self._db.scalar(stmt)
 
+    def delete(self, file_row: File) -> None:
+        self._db.delete(file_row)
+        self._db.commit()
+
+    def update(self, file_row: File) -> File:
+        self._db.add(file_row)
+        self._db.commit()
+        self._db.refresh(file_row)
+        return file_row
+
     def list_all(self) -> list[File]:
         stmt = select(File).order_by(File.id)
         return list(self._db.scalars(stmt).all())

@@ -93,3 +93,38 @@ class FileService:
             return None
 
         return (row.original_name, row.stored_name, row.content_type, path.read_bytes())
+
+    def get_metadata_by_secret_key(self, secret_key: str) -> File | None:
+        return self._files.get_by_secret_key(secret_key)
+
+    def delete_file_by_secret_key(self, secret_key: str) -> bool:
+        row = self._files.get_by_secret_key(secret_key)
+        if row is None:
+            return False
+
+        path = UPLOAD_ROOT / row.stored_name
+        if path.exists():
+            path.unlink()
+
+        self._files.delete(row)
+        return True
+
+    def update_file_by_secret_key(
+        self,
+        secret_key: str,
+        *,
+        original_name: str,
+        content_type: str | None,
+        file_bytes: bytes,
+    ) -> File | None:
+        row = self._files.get_by_secret_key(secret_key)
+        if row is None:
+            return None
+
+        path = UPLOAD_ROOT / row.stored_name
+        path.write_bytes(file_bytes)
+
+        row.original_name = original_name
+        row.content_type = content_type
+        row.size = len(file_bytes)
+        return self._files.update(row)
