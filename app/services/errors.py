@@ -10,11 +10,3 @@ class InvalidCredentialsError(Exception):
 
 class InvalidTokenError(Exception):
     pass
-
-
-class StoredFileNotFoundError(Exception):
-    pass
-
-
-class InvalidFileSecretError(Exception):
-    pass

@@ -21,8 +21,8 @@ env/
 *.sqlite
 *.sqlite3
 
-# Ficheiros enviados pela API
-uploads/
+# Files stored by the API
+storage/
 
 # Pacotes / build
 build/

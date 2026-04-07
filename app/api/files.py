@@ -1,37 +1,15 @@
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from fastapi.responses import Response
+from fastapi import APIRouter, Depends, File, UploadFile, status
 
 from app.api.deps import get_current_user, get_file_service
 from app.models.user import User
 from app.schemas.file import FileCreate, FileCreatedResponse, FileResponse
-from app.services.errors import InvalidFileSecretError, StoredFileNotFoundError
-from app.services.file_service import FileService, build_absolute_view_url
-
-public_router = APIRouter(prefix="/files", tags=["files"])
-
-
-@public_router.get("/raw/{stored_name}")
-def get_raw_file(
-    stored_name: str,
-    secretKey: str = Query(..., description="Chave secreta devolvida no upload."),
-    service: FileService = Depends(get_file_service),
-) -> Response:
-    try:
-        data, content_type = service.read_public_file(stored_name, secretKey)
-    except StoredFileNotFoundError as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="File not found") from exc
-    except InvalidFileSecretError as exc:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Invalid secret") from exc
-
-    media = content_type or "application/octet-stream"
-    return Response(content=data, media_type=media)
-
+from app.services.file_service import FileService, build_absolute_storage_url
 
 router = APIRouter(prefix="/files", tags=["files"], dependencies=[Depends(get_current_user)])
 
 
 @router.post(
-    "",
+    "/upload",
     response_model=FileCreatedResponse,
     response_model_by_alias=True,
     status_code=status.HTTP_201_CREATED,
@@ -62,7 +40,7 @@ async def create_file(
     row = service.create(payload, file_bytes=raw)
     return FileCreatedResponse(
         id=row.id,
-        url=build_absolute_view_url(row.stored_name, row.secret_key),
+        url=build_absolute_storage_url(row.stored_name),
         secret_key=row.secret_key,
     )
 
