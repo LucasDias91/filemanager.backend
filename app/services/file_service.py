@@ -12,8 +12,9 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.file import FileCreate
 from app.services.errors import UserNotFoundError
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-UPLOAD_ROOT = _PROJECT_ROOT / "storage"
+UPLOAD_ROOT = Path(
+    os.environ.get("FILEMANAGER_STORAGE_PATH", r"C:\fileManager\storage")
+).expanduser().resolve()
 
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 STORAGE_URL_PATH = "/storage"

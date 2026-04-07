@@ -7,6 +7,7 @@ from app.api.deps import get_current_user, get_file_service
 from app.models.user import User
 from app.schemas.file import FileCreate, FileCreatedResponse, FileResponse
 from app.services.file_service import FileService, build_absolute_storage_url
+from app.services.upload_validation import read_upload_with_limit, validate_upload_body
 
 router = APIRouter(prefix="/files", tags=["files"], dependencies=[Depends(get_current_user)])
 public_router = APIRouter(prefix="/files", tags=["files"])
@@ -23,16 +24,12 @@ async def create_file(
     file: UploadFile = File(...),
     service: FileService = Depends(get_file_service),
 ) -> FileCreatedResponse:
-    raw = await file.read()
-    name = (file.filename or "unnamed").strip() or "unnamed"
-    if len(name) > 255:
-        name = name[:255]
-
-    ct = file.content_type
-    if ct is not None:
-        ct = ct.strip() or None
-    if ct is not None and len(ct) > 50:
-        ct = ct[:50]
+    raw = await read_upload_with_limit(file)
+    name, ct = validate_upload_body(
+        original_filename=file.filename,
+        client_content_type=file.content_type,
+        body=raw,
+    )
 
     payload = FileCreate(
         user_id=current_user.id,
@@ -117,16 +114,12 @@ async def update_file_by_key(
     file: UploadFile = File(...),
     service: FileService = Depends(get_file_service),
 ) -> FileCreatedResponse:
-    raw = await file.read()
-    name = (file.filename or "unnamed").strip() or "unnamed"
-    if len(name) > 255:
-        name = name[:255]
-
-    ct = file.content_type
-    if ct is not None:
-        ct = ct.strip() or None
-    if ct is not None and len(ct) > 50:
-        ct = ct[:50]
+    raw = await read_upload_with_limit(file)
+    name, ct = validate_upload_body(
+        original_filename=file.filename,
+        client_content_type=file.content_type,
+        body=raw,
+    )
 
     row = service.update_file_by_secret_key(
         key,

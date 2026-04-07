@@ -2,11 +2,14 @@
 cd /d "%~dp0"
 
 if not exist ".venv\Scripts\python.exe" (
-    echo [.venv] Python do ambiente virtual nao encontrado.
-    echo Crie o ambiente: python -m venv .venv
-    echo Depois: .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-    pause
-    exit /b 1
+    echo Creating virtual environment .venv ...
+    python -m venv .venv
+    if errorlevel 1 (
+        echo Failed to create .venv. Check that Python is on PATH ^(python -m venv .venv^).
+        pause
+        exit /b 1
+    )
+    echo .venv created.
 )
 
 echo Installing dependencies (if needed)...

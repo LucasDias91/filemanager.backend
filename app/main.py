@@ -56,7 +56,6 @@ app.include_router(users_router, prefix="/api")
 app.include_router(files_public_router, prefix="/api")
 app.include_router(files_router, prefix="/api")
 
-# Same idea as app.UseStaticFiles() in ASP.NET Core: serve files from disk under a URL prefix.
 UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 app.mount(
     "/storage",
