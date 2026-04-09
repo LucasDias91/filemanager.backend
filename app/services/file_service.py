@@ -122,10 +122,22 @@ class FileService:
         if row is None:
             return None
 
-        path = UPLOAD_ROOT / row.stored_name
-        path.write_bytes(file_bytes)
+        old_path = UPLOAD_ROOT / row.stored_name
+        if old_path.is_file():
+            old_path.unlink()
+
+        stored_name = self._make_stored_name(original_name)
+        relative_location = stored_name
+        relative_url = self._build_relative_url(stored_name)
+
+        UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+        dest_path = UPLOAD_ROOT / stored_name
+        dest_path.write_bytes(file_bytes)
 
         row.original_name = original_name
+        row.stored_name = stored_name
         row.content_type = content_type
+        row.relative_location = relative_location
+        row.relative_url = relative_url
         row.size = len(file_bytes)
         return self._files.update(row)
