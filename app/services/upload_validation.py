@@ -68,7 +68,6 @@ _CANONICAL_MIME: Final[dict[str, str]] = {
 _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
 _BAD_NAME_RE = re.compile(r"[<>\"]|\.{2,}")
 
-# OOXML: alguns geradores usam maiúsculas (ex.: Word/Document.xml); Word também usa document2.xml.
 _RE_DOCX_MAIN = re.compile(r"(?i)word/document\d*\.xml$")
 _RE_XLSX_WORKBOOK = re.compile(r"(?i)xl/workbook\.xml$")
 
@@ -195,7 +194,6 @@ def validate_upload_body(
     original_filename: str | None,
     body: bytes,
 ) -> tuple[str, str]:
-    """Valida extensão e assinatura do conteúdo. Não valida Content-Type do browser (varia muito; docx/xlsx costumam vir como application/zip)."""
     if not body:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
