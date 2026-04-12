@@ -17,7 +17,7 @@ class File(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     original_name: Mapped[str] = mapped_column(String(255), nullable=False)
     stored_name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
-    content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
     relative_location: Mapped[str] = mapped_column(String(255), nullable=False)
     relative_url: Mapped[str] = mapped_column(String(255), nullable=False)
     relative_path: Mapped[str] = mapped_column(String(7), nullable=False)

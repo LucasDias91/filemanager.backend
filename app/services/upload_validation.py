@@ -11,6 +11,8 @@ from fastapi import HTTPException, UploadFile, status
 _MAX_UPLOAD_MB = int(os.environ.get("FILEMANAGER_MAX_UPLOAD_MB", "100"))
 MAX_UPLOAD_BYTES: Final[int] = max(1, _MAX_UPLOAD_MB) * 1024 * 1024
 
+_OLE_COMPOUND_MAGIC: Final[bytes] = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+
 _DANGEROUS_SEGMENTS: Final[frozenset[str]] = frozenset(
     {
         "exe",
@@ -48,26 +50,8 @@ _DANGEROUS_SEGMENTS: Final[frozenset[str]] = frozenset(
 )
 
 _ALLOWED_EXT: Final[frozenset[str]] = frozenset(
-    {"jpg", "jpeg", "png", "webp", "pdf", "docx", "xlsx"}
+    {"jpg", "jpeg", "png", "webp", "pdf", "doc", "docx", "xls", "xlsx"}
 )
-
-_ALLOWED_MIME_BY_EXT: Final[dict[str, frozenset[str]]] = {
-    "jpg": frozenset({"image/jpeg"}),
-    "jpeg": frozenset({"image/jpeg"}),
-    "png": frozenset({"image/png"}),
-    "webp": frozenset({"image/webp"}),
-    "pdf": frozenset({"application/pdf"}),
-    "docx": frozenset(
-        {
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        }
-    ),
-    "xlsx": frozenset(
-        {
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        }
-    ),
-}
 
 _CANONICAL_MIME: Final[dict[str, str]] = {
     "jpg": "image/jpeg",
@@ -75,12 +59,18 @@ _CANONICAL_MIME: Final[dict[str, str]] = {
     "png": "image/png",
     "webp": "image/webp",
     "pdf": "application/pdf",
+    "doc": "application/msword",
     "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "xls": "application/vnd.ms-excel",
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 
 _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
 _BAD_NAME_RE = re.compile(r"[<>\"]|\.{2,}")
+
+# OOXML: alguns geradores usam maiúsculas (ex.: Word/Document.xml); Word também usa document2.xml.
+_RE_DOCX_MAIN = re.compile(r"(?i)word/document\d*\.xml$")
+_RE_XLSX_WORKBOOK = re.compile(r"(?i)xl/workbook\.xml$")
 
 
 async def read_upload_with_limit(upload: UploadFile, limit: int = MAX_UPLOAD_BYTES) -> bytes:
@@ -96,17 +86,6 @@ async def read_upload_with_limit(upload: UploadFile, limit: int = MAX_UPLOAD_BYT
             )
         out.extend(chunk)
     return bytes(out)
-
-
-def _normalize_client_mime(raw: str | None) -> str | None:
-    if raw is None:
-        return None
-    s = raw.strip().lower()
-    if not s:
-        return None
-    if ";" in s:
-        s = s.split(";", 1)[0].strip()
-    return s[:50] if s else None
 
 
 def _sanitize_display_name(filename: str) -> str:
@@ -166,17 +145,31 @@ def _validate_name_and_ext(display_name: str) -> str:
     if ext not in _ALLOWED_EXT:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only jpg, jpeg, png, webp, pdf, docx, xlsx are allowed",
+            detail="Only jpg, jpeg, png, webp, pdf, doc, docx, xls, xlsx are allowed",
         )
     return name
 
 
-def _zip_has_file(data: bytes, member: str) -> bool:
+def _zip_name_matches_any(data: bytes, pattern: re.Pattern[str]) -> bool:
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            return member in zf.namelist()
+            for name in zf.namelist():
+                norm = name.replace("\\", "/")
+                if pattern.search(norm):
+                    return True
     except (zipfile.BadZipFile, OSError):
         return False
+    return False
+
+
+def _infer_ooxml_extension(body: bytes) -> str | None:
+    if not body.startswith(b"PK\x03\x04"):
+        return None
+    if _zip_name_matches_any(body, _RE_XLSX_WORKBOOK):
+        return "xlsx"
+    if _zip_name_matches_any(body, _RE_DOCX_MAIN):
+        return "docx"
+    return None
 
 
 def _body_matches_extension(ext: str, body: bytes) -> bool:
@@ -189,42 +182,45 @@ def _body_matches_extension(ext: str, body: bytes) -> bool:
     if ext == "pdf":
         return body.startswith(b"%PDF")
     if ext == "docx":
-        return body.startswith(b"PK\x03\x04") and _zip_has_file(body, "word/document.xml")
+        return body.startswith(b"PK\x03\x04") and _zip_name_matches_any(body, _RE_DOCX_MAIN)
     if ext == "xlsx":
-        return body.startswith(b"PK\x03\x04") and _zip_has_file(body, "xl/workbook.xml")
+        return body.startswith(b"PK\x03\x04") and _zip_name_matches_any(body, _RE_XLSX_WORKBOOK)
+    if ext in ("doc", "xls"):
+        return len(body) >= 8 and body.startswith(_OLE_COMPOUND_MAGIC)
     return False
 
 
 def validate_upload_body(
     *,
     original_filename: str | None,
-    client_content_type: str | None,
     body: bytes,
 ) -> tuple[str, str]:
+    """Valida extensão e assinatura do conteúdo. Não valida Content-Type do browser (varia muito; docx/xlsx costumam vir como application/zip)."""
     if not body:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Empty file",
         )
 
-    display_name = _validate_name_and_ext(
-        (original_filename or "unnamed").strip() or "unnamed"
-    )
+    raw = (original_filename or "").strip() or "upload"
+    base = os.path.basename(raw.replace("\\", "/"))
+    if "." not in base:
+        inferred = _infer_ooxml_extension(body)
+        if inferred:
+            raw = f"{base}.{inferred}" if base and base not in (".", "..") else f"upload.{inferred}"
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File name must include an extension (e.g. .docx, .xlsx)",
+            )
+
+    display_name = _validate_name_and_ext(raw)
     ext, _ = _extension_segments(display_name)
     if not _body_matches_extension(ext, body):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="File content does not match declared type (signature check failed)",
         )
-
-    client_mime = _normalize_client_mime(client_content_type)
-    allowed_mimes = _ALLOWED_MIME_BY_EXT[ext]
-    if client_mime is not None and client_mime not in allowed_mimes:
-        if client_mime != "application/octet-stream":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Content-Type not allowed for this file type",
-            )
 
     canonical = _CANONICAL_MIME[ext]
     return display_name, canonical

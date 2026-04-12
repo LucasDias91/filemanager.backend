@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class FileCreate(BaseModel):
     user_id: int = Field(..., ge=1)
     original_name: str = Field(..., max_length=255)
-    content_type: str | None = Field(None, max_length=50)
+    content_type: str | None = Field(None, max_length=255)
     size: int = Field(..., ge=0)
 
 

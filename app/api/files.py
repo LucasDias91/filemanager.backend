@@ -30,11 +30,7 @@ async def create_file(
     service: FileService = Depends(get_file_service),
 ) -> FileCreatedResponse:
     raw = await read_upload_with_limit(file)
-    name, ct = validate_upload_body(
-        original_filename=file.filename,
-        client_content_type=file.content_type,
-        body=raw,
-    )
+    name, ct = validate_upload_body(original_filename=file.filename, body=raw)
 
     payload = FileCreate(
         user_id=current_user.id,
@@ -142,11 +138,7 @@ async def update_file_by_key(
     service: FileService = Depends(get_file_service),
 ) -> FileCreatedResponse:
     raw = await read_upload_with_limit(file)
-    name, ct = validate_upload_body(
-        original_filename=file.filename,
-        client_content_type=file.content_type,
-        body=raw,
-    )
+    name, ct = validate_upload_body(original_filename=file.filename, body=raw)
 
     row = service.update_file_by_secret_key(
         key,
