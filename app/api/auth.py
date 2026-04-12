@@ -8,7 +8,12 @@ from app.services.errors import InvalidCredentialsError
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    summary="Iniciar sessão",
+    description="Autentica com nome de utilizador e palavra-passe e devolve um token JWT.",
+    response_model=TokenResponse,
+)
 def login(
     payload: LoginRequest,
     auth_service: AuthService = Depends(get_auth_service),

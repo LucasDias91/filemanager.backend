@@ -15,6 +15,11 @@ public_router = APIRouter(prefix="/files", tags=["files"])
 
 @router.post(
     "/upload",
+    summary="Enviar arquivo",
+    description=(
+        "Recebe o arquivo em multipart/form-data (campo `file`). "
+        "Requer JWT Bearer; o dono do arquivo é o utilizador do token."
+    ),
     response_model=FileCreatedResponse,
     response_model_by_alias=True,
     status_code=status.HTTP_201_CREATED,
@@ -46,7 +51,12 @@ async def create_file(
     )
 
 
-@router.get("", response_model=list[FileResponse])
+@router.get(
+    "",
+    summary="Listar arquivos",
+    description="Lista os metadados de todos os arquivos. Requer JWT Bearer.",
+    response_model=list[FileResponse],
+)
 def list_files(service: FileService = Depends(get_file_service)) -> list[FileResponse]:
     rows = service.list_all()
     return [
@@ -60,7 +70,11 @@ def list_files(service: FileService = Depends(get_file_service)) -> list[FileRes
     ]
 
 
-@public_router.get("/download")
+@public_router.get(
+    "/download",
+    summary="Baixar arquivo por chave",
+    description="Descarrega o binário do arquivo. A chave é a secretKey devolvida no envio.",
+)
 def download_file_by_key(
     key: str = Query(..., description="SecretKey retornada no upload."),
     service: FileService = Depends(get_file_service),
@@ -76,7 +90,13 @@ def download_file_by_key(
     return Response(content=data, media_type=media_type, headers=headers)
 
 
-@public_router.get("/key/{secretKey}", response_model=FileCreatedResponse, response_model_by_alias=True)
+@public_router.get(
+    "/key/{secretKey}",
+    summary="Consultar arquivo por chave",
+    description="Devolve id, URL pública e secretKey a partir da secretKey (sem JWT).",
+    response_model=FileCreatedResponse,
+    response_model_by_alias=True,
+)
 def get_file_by_key(
     secretKey: str,
     service: FileService = Depends(get_file_service),
@@ -92,7 +112,12 @@ def get_file_by_key(
     )
 
 
-@public_router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+@public_router.delete(
+    "",
+    summary="Eliminar arquivo por chave",
+    description="Remove o arquivo associado à secretKey (query `key`).",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 def delete_file_by_key(
     key: str = Query(..., description="SecretKey retornada no upload."),
     service: FileService = Depends(get_file_service),
@@ -105,6 +130,8 @@ def delete_file_by_key(
 
 @public_router.put(
     "/upload",
+    summary="Atualizar arquivo por chave",
+    description="Substitui o conteúdo do arquivo identificado pela secretKey (query `key`).",
     response_model=FileCreatedResponse,
     response_model_by_alias=True,
     status_code=status.HTTP_200_OK,

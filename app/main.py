@@ -17,15 +17,15 @@ OPENAPI_TAGS = [
     },
     {
         "name": "users",
-        "description": "Criação e listagem de utilizadores (requer JWT Bearer).",
+        "description": "Criação pública de utilizadores; listagem com JWT Bearer.",
     },
     {
         "name": "files",
         "description": (
-            "Multipart upload via FormData with field `file` (JWT Bearer); user from token. "
-            "POST /api/files/upload returns id, URL under /storage/{stored_name}, and secretKey. "
-            "GET /storage/{stored_name} serves the file (StaticFiles). "
-            "Metadata listing requires JWT Bearer."
+            "Envio multipart via FormData com o campo `file` (JWT Bearer); o utilizador vem do token. "
+            "O POST /api/files/upload devolve id, URL em /storage/{stored_name} e secretKey. "
+            "O GET /storage/{stored_name} serve o arquivo (StaticFiles). "
+            "A listagem de metadados exige JWT Bearer."
         ),
     },
 ]
@@ -41,7 +41,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(
     title="[FileManager Backend]",
     description=(
-        "Projeto para gerenciamento de arquivos. Autenticação via JWT Bearer."
+        "API para gestão de arquivos. Autenticação via JWT Bearer."
     ),
     version="0.1.0",
     lifespan=lifespan,

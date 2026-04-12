@@ -8,7 +8,13 @@ from app.services.user_service import UserService
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    summary="Criar utilizador",
+    description="Regista um novo utilizador (público, sem JWT).",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_user(
     payload: UserCreate,
     service: UserService = Depends(get_user_service),
@@ -23,7 +29,12 @@ def create_user(
     return UserResponse.model_validate(user)
 
 
-@router.get("", response_model=list[UserResponse])
+@router.get(
+    "",
+    summary="Listar utilizadores",
+    description="Lista todos os utilizadores (requer JWT Bearer).",
+    response_model=list[UserResponse],
+)
 def list_users(
     _: object = Depends(get_current_user),
     service: UserService = Depends(get_user_service),

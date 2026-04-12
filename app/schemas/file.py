@@ -13,9 +13,12 @@ class FileCreate(BaseModel):
 class FileCreatedResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True, ser_json_by_alias=True)
 
-    id: int
-    url: str
-    secret_key: str = Field(serialization_alias="secretKey")
+    id: int = Field(..., description="Identificador do arquivo na base de dados")
+    url: str = Field(..., description="URL pública para descarregar o arquivo em /storage/…")
+    secret_key: str = Field(
+        serialization_alias="secretKey",
+        description="Chave secreta para download, atualização ou eliminação sem JWT",
+    )
 
 
 class FileResponse(BaseModel):
