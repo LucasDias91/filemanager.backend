@@ -39,10 +39,9 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="filemanager.backend",
+    title="[FileManager Backend]",
     description=(
-        "API REST em camadas (rotas → serviços → repositórios) com SQLite e SQLAlchemy. "
-        "Experimente os endpoints abaixo diretamente no Swagger."
+        "Projeto para gerenciamento de arquivos. Autenticação via JWT Bearer."
     ),
     version="0.1.0",
     lifespan=lifespan,
