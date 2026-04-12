@@ -1,70 +1,76 @@
 # FileManager — Backend
 
-API REST em **FastAPI** com SQLite (SQLAlchemy), JWT para autenticação e upload de arquivos com validação de tipo e tamanho.
+API REST em **FastAPI** com SQLite (SQLAlchemy), JWT para autenticação e upload de ficheiros (validação de extensão/conteúdo e limite de tamanho).
 
-## Como iniciar a aplicação (stack completo)
+## Início rápido com `start.bat` (Windows)
 
-1. **Backend (esta pasta)** — instale as dependências (uma vez) e suba a API na porta **8000** (veja [Executar o backend](#executar-o-backend) abaixo).
-2. **Frontend** — na pasta `filemanager.frontend`, no Windows, execute **`start.bat`**: ele sobe o site na porta **5500** e abre o navegador. Em outros sistemas, use `python -m http.server 5500` na pasta do frontend (detalhes no README do frontend).
+Na pasta deste projeto (`filemanager.backend`), execute **`start.bat`**. O script tenta localizar o Python, cria `.venv` se necessário, instala `requirements.txt` e arranca o Uvicorn em **http://127.0.0.1:8000** (abre o Swagger após alguns segundos).
 
-Ordem: sempre deixe o backend rodando antes de usar o frontend.
+## Se o `start.bat` não funcionar (execução manual)
+
+Use estes passos em qualquer sistema, sempre **a partir desta pasta** (onde existem `app/` e `requirements.txt`).
+
+1. **Python 3.10+** instalado e acessível no terminal (`python` ou `py`).
+
+2. **Ambiente virtual e dependências:**
+
+   ```bash
+   python -m venv .venv
+   ```
+
+   Ative o ambiente:
+
+   - **Windows (cmd/PowerShell):** `.venv\Scripts\activate`
+   - **Linux / macOS:** `source .venv/bin/activate`
+
+   Depois:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Arrancar a API** (o diretório de trabalho atual deve ser a raiz do backend):
+
+   ```bash
+   uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+   ```
+
+4. **Documentação interativa**
+
+   - Swagger: http://127.0.0.1:8000/swagger  
+   - ReDoc: http://127.0.0.1:8000/redoc  
+
+Na primeira execução o SQLite é criado automaticamente (`filemanager.db` na pasta de onde corre o comando).
 
 ## Requisitos
 
 - Python 3.10+ (recomendado 3.11+)
-- Ambiente virtual (recomendado)
-
-## Instalação
-
-Na pasta do backend:
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-No Linux/macOS, ative com `source .venv/bin/activate`.
-
-## Executar o backend
-
-A partir da raiz do backend (onde fica a pasta `app/`):
-
-```bash
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-- **Swagger UI:** http://127.0.0.1:8000/swagger  
-- **ReDoc:** http://127.0.0.1:8000/redoc  
-
-Na primeira execução o SQLite é criado automaticamente (`filemanager.db` no diretório de trabalho atual).
+- Ambiente virtual (recomendado; o `start.bat` cria `.venv`)
 
 ## Variáveis de ambiente (opcional)
 
 | Variável | Descrição | Padrão |
 |----------|-----------|--------|
 | `FILEMANAGER_STORAGE_PATH` | Pasta onde os uploads são gravados | `C:\fileManager\storage` |
-| `PUBLIC_BASE_URL` | Base das URLs públicas dos arquivos (`/storage/...`) | `http://127.0.0.1:8000` |
+| `PUBLIC_BASE_URL` | Base das URLs públicas dos ficheiros (`/storage/...`) | `http://127.0.0.1:8000` |
 
-Ajuste `PUBLIC_BASE_URL` se a API for acessada por outro host ou porta (para os links retornados no JSON baterem com o acesso real).
+Ajuste `PUBLIC_BASE_URL` se a API for acedida por outro host ou porta (para os links no JSON coincidirem com o acesso real).
 
 ## Endpoints (resumo)
 
 | Prefixo | Uso |
 |---------|-----|
 | `POST /api/auth/login` | Login (JSON: `username`, `password`) → token JWT |
-| `POST /api/users` | Criar usuário (público no MVP) |
-| `GET /api/users` | Listar usuários (Bearer JWT) |
+| `POST /api/users` | Criar utilizador (público no MVP) |
+| `GET /api/users` | Listar utilizadores (Bearer JWT) |
 | `POST /api/files/upload` | Upload multipart, campo `file` (Bearer JWT) |
-| `GET /api/files` | Listar metadados dos arquivos (Bearer JWT) |
-| `GET /storage/{nome}` | Download do arquivo enviado (servido como estático) |
+| `GET /api/files` | Listar metadados (Bearer JWT) |
+| `GET /storage/{nome}` | Ficheiro gravado (servido como estático) |
 
-CORS está liberado para qualquer origem (`*`), adequado para desenvolvimento local com frontend em outra porta.
+CORS está configurado para desenvolvimento (`allow_origins=["*"]`).
 
 ## Estrutura do projeto
 
 Camadas: rotas (`app/api/`) → serviços (`app/services/`) → repositórios (`app/repositories/`), modelos e schemas em `app/models/` e `app/schemas/`.
 
-## Frontend
-
-O cliente web fica no repositório/pasta **filemanager.frontend**. Configure a URL da API em `js/config.js` (`API_BASE_URL`) para apontar para este servidor (por padrão `http://127.0.0.1:8000`).
+O cliente web do mesmo repositório vive na pasta **`filemanager.frontend`**; consulte o README dessa pasta apenas para o frontend.
