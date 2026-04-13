@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
 from app.api.auth import router as auth_router
-from app.api.files import public_router as files_public_router, router as files_router
+from app.api.files import router as files_router
 from app.api.users import router as users_router
 from app.db.database import init_db
 from app.services.file_service import UPLOAD_ROOT
@@ -13,19 +13,20 @@ from app.services.file_service import UPLOAD_ROOT
 OPENAPI_TAGS = [
     {
         "name": "auth",
-        "description": "Autenticação pública (login) para obter token JWT Bearer.",
+        "description": "Autenticação (login) para obter token JWT Bearer.",
     },
     {
         "name": "users",
-        "description": "Criação pública de utilizadores; listagem com JWT Bearer.",
+        "description": "Criação de utilizadores; listagem com JWT Bearer.",
     },
     {
         "name": "files",
         "description": (
-            "Envio multipart via FormData com o campo `file` (JWT Bearer); o utilizador vem do token. "
+            "Todas as rotas /api/files/* exigem JWT Bearer. "
+            "Listagem e operações por chave aplicam-se apenas aos arquivos do utilizador do token. "
+            "Envio multipart via FormData com o campo `file`; o utilizador vem do token. "
             "O POST /api/files/upload devolve id, URL em /storage/{stored_name} e secretKey. "
-            "O GET /storage/{stored_name} serve o arquivo (StaticFiles). "
-            "A listagem de metadados exige JWT Bearer."
+            "O GET /storage/{stored_name} serve o arquivo (StaticFiles)."
         ),
     },
 ]
@@ -61,7 +62,6 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
-app.include_router(files_public_router, prefix="/api")
 app.include_router(files_router, prefix="/api")
 
 UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)

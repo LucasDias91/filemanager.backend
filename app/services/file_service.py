@@ -84,6 +84,9 @@ class FileService:
     def list_all(self) -> list[File]:
         return self._files.list_all()
 
+    def list_for_user(self, user_id: int) -> list[File]:
+        return self._files.list_for_user(user_id)
+
     def get_file_by_secret_key(self, secret_key: str) -> tuple[str, str, str | None, bytes] | None:
         row = self._files.get_by_secret_key(secret_key)
         if row is None:

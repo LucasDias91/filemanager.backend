@@ -35,3 +35,7 @@ class FileRepository:
     def list_all(self) -> list[File]:
         stmt = select(File).order_by(File.id)
         return list(self._db.scalars(stmt).all())
+
+    def list_for_user(self, user_id: int) -> list[File]:
+        stmt = select(File).where(File.user_id == user_id).order_by(File.id)
+        return list(self._db.scalars(stmt).all())
